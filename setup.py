@@ -1,6 +1,8 @@
-#!/usr/bin/env python
+"""
+Setup script for npdimension.
+"""
 
-from distutils.core import setup, Command
+from setuptools import setup, Command
 import os
 import sys
 
@@ -8,6 +10,7 @@ packages = ['npdimension']
 scripts = []
 package_data = { }
 
+# TODO: Add dependency on numpy
 setup(name='npdimension',
       version='0.0.1',
       description="Label dimensions of numpy ndarrays and perform bulk operations on aligned"
@@ -18,4 +21,5 @@ setup(name='npdimension',
       license='Proprietary',
       package_data=package_data,
       packages=packages,
-      scripts=scripts)
+      scripts=scripts,
+      test_suite='nose2.collector.collector')

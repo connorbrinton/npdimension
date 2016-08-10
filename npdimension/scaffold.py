@@ -55,15 +55,3 @@ class Scaffold(dict):
                         raise Exception("Inconsistent dimension for Scaffold along %s" % axis)
 
         return shape
-
-    def take(self, indices, axis=None):
-        """
-        Take elements from a Scaffold along a named axis. See numpy.take.
-        """
-        return self.apply(Block.take, indices, axis=axis)
-
-    def compress(self, condition, axis=None):
-        """
-        Return selected slices of a Scaffold along a named axis. See numpy.compress.
-        """
-        return self.apply(Block.compress, condition, axis=axis)

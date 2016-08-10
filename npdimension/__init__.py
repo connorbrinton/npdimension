@@ -5,9 +5,6 @@ container.
 
 from block import Block
 from scaffold import Scaffold
-import operators
-from operators import *
+import npdoperators
 
-import linalg
-
-__all__ = ['Block', 'Scaffold', 'linalg'] + operators.__all__
+__all__ = ['Block', 'Scaffold']

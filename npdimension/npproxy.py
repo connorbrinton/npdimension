@@ -208,7 +208,28 @@ NP_MEMBERS = {
     # 'ix_': Parameters(), # TODO: Implement
     # 'kaiser': Parameters(), # TODO: Implement
     # 'kron': Parameters(), # TODO: Implement
-    'linalg': {}, # TODO: Add linalg functions
+    'linalg': {
+        'cholesky': Parameters(), # TODO: Implement
+        'cond': Parameters(), # TODO: Implement
+        'det': Parameters(), # TODO: Implement
+        'eig': Parameters(), # TODO: Implement
+        'eigh': Parameters(), # TODO: Implement
+        'eigvals': Parameters(), # TODO: Implement
+        'eigvalsh': Parameters(), # TODO: Implement
+        'info': Parameters(), # TODO: Implement
+        'inv': Parameters(), # TODO: Implement
+        'lstsq': Parameters(), # TODO: Implement
+        'matrix_power': Parameters(), # TODO: Implement
+        'matrix_rank': Parameters(), # TODO: Implement
+        'norm': Parameters(), # TODO: Implement
+        'pinv': Parameters(), # TODO: Implement
+        'qr': Parameters(), # TODO: Implement
+        'slogdet': Parameters(), # TODO: Implement
+        'solve': Parameters(), # TODO: Implement
+        'svd': Parameters(), # TODO: Implement
+        'tensorinv': Parameters(), # TODO: Implement
+        'tensorsolve': Parameters() # TODO: Implement
+    }, # TODO: Add linalg functions
     # 'linspace': Parameters(), # TODO: Implement
     # 'load': Parameters(), # TODO: Implement
     # 'loadtxt': Parameters(), # TODO: Implement

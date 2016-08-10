@@ -71,8 +71,3 @@ class Block(object):
     @property
     def shape(self):
         return {axis: dimension for axis, dimension in zip(self._axes, self._data.shape)}
-
-
-# Inject ndarray members
-from npdoperators import load_ndarray_members
-load_ndarray_members(Block)

@@ -2,7 +2,7 @@
 A dictionary-like container for aligned npdimension Blocks.
 """
 
-from block import Block
+import numpy as np
 
 class Scaffold(dict):
 

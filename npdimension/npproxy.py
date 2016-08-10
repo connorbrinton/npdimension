@@ -6,6 +6,7 @@ Define all npdimension operators.
 # pylint: disable=W0613
 
 from collections import namedtuple
+from types import ModuleType
 import numpy as np
 from block import Block
 from scaffold import Scaffold
@@ -221,7 +222,7 @@ NP_MEMBERS = {
         'lstsq': Parameters(), # TODO: Implement
         'matrix_power': Parameters(), # TODO: Implement
         'matrix_rank': Parameters(), # TODO: Implement
-        'norm': Parameters(), # TODO: Implement
+        'norm': Parameters(transform_axes=remove_axis),
         'pinv': Parameters(), # TODO: Implement
         'qr': Parameters(), # TODO: Implement
         'slogdet': Parameters(), # TODO: Implement
@@ -642,7 +643,7 @@ def transform_args(params, first, *args, **kwargs):
 
     # Rewrite the axis keyword argument
     if 'axis' in kwargs:
-        kwargs['axis'] = first.axes.index(kwargs['index'])
+        kwargs['axis'] = first.axes.index(kwargs['axis'])
 
     return args, kwargs
 
@@ -651,20 +652,6 @@ def load_proxies(source, which, destination):
     """
     Load proxies to functions from `source` according to `which` into `destination`.
     """
-    # Load proxies
-    proxies = load_proxies_internal(source, which)
-
-    # Store in destination
-    for name, value in proxies.iteritems():
-        if not hasattr(destination, name):
-            setattr(destination, name, value)
-
-
-def load_proxies_internal(source, which):
-    """
-    Return a dictionary of closured proxy functions that maps from names to functions like `which`.
-    """
-    proxies = {}
     # For each member listed in which
     for name, value in which.iteritems():
         # Load the member
@@ -672,11 +659,14 @@ def load_proxies_internal(source, which):
         if member is None:
             raise Exception("Member %s not found in %s" % (name, source))
 
-        # Base case, it's a function, so create a closure
+        # Base case, it's a function
         if isinstance(value, Parameters):
-            proxies[name] = closure(member, value)
+            proxy = closure(member, value)
         else:
             # Otherwise, it's a module, so load its members recursively
-            proxies[name] = load_proxies_internal(member, value)
+            proxy = ModuleType(name)
+            load_proxies(member, value, proxy)
 
-    return proxies
+        # Store in destination
+        if not hasattr(destination, name):
+            setattr(destination, name, proxy)

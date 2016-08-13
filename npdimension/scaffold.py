@@ -2,6 +2,8 @@
 A dictionary-like container for aligned npdimension Blocks.
 """
 
+# TODO: Verify that shapes match according to axes on insertion
+
 import numpy as np
 
 class Scaffold(dict):

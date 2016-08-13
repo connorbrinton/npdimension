@@ -36,11 +36,15 @@ def insert_axes(*args, **kwargs):
     first = get_next_block(iterator)
     second = get_next_block(iterator)
 
+    # TODO: If no Block was found, look for something simply list-like
+    if second is None:
+        raise Exception("A Block is required for this function.")
+
     # Find the index of the axis argument in the first axes
     index = first.axes.index(kwargs['axis'])
 
     # Substitute the second Block's axes where the specified axis exists
-    return first[:index] + second.axes + first[(index + 1):]
+    return first.axes[:index] + second.axes + first.axes[(index + 1):]
 
 
 def remove_axis(*args, **kwargs):
@@ -209,6 +213,7 @@ NP_MEMBERS = {
     # 'ix_': Parameters(), # TODO: Implement
     # 'kaiser': Parameters(), # TODO: Implement
     # 'kron': Parameters(), # TODO: Implement
+    'lib': {}, # TODO: add lib functions
     'linalg': {
         'cholesky': Parameters(), # TODO: Implement
         'cond': Parameters(), # TODO: Implement
@@ -230,7 +235,7 @@ NP_MEMBERS = {
         'svd': Parameters(), # TODO: Implement
         'tensorinv': Parameters(), # TODO: Implement
         'tensorsolve': Parameters() # TODO: Implement
-    }, # TODO: Add linalg functions
+    },
     # 'linspace': Parameters(), # TODO: Implement
     # 'load': Parameters(), # TODO: Implement
     # 'loadtxt': Parameters(), # TODO: Implement
@@ -545,9 +550,12 @@ def closure(func, params):
         The arguments and kwargs are rewritten before invoking the numpy function. The following
         checks and transformations take place:
         - If a Scaffold object is present in the arguments, this function is reinvoked with each
-          member of the Scaffold in turn. If the results are scalars or ndarrays, a dictionary with
-          the same keys as the Scaffold and the result for each key is returned. If the results are
-          all Blocks, a new Scaffold with the same keys and the result for each key is returned.
+          member of the Scaffold in turn. If the keyword argument `axis` is specified, Scaffold
+          members that do not have the requested `axis` are simply copied to the returned data
+          structure (and thus do not have the function applied to them). If the results are scalars
+          or ndarrays, a dictionary with the same keys as the Scaffold and the result for each key
+          is returned. If the results are all Blocks, a new Scaffold with the same keys and the
+          result for each key is returned.
         - If `what` specifies a `transform_axes` function, invoke it with the arguments to the
           function and save its return value as `transformed_axes`.
         - If `what` specifies a `transform_args` function, use it to transform the function
@@ -565,25 +573,8 @@ def closure(func, params):
         args = list(args)
 
         # Deal with Scaffolds as arguments
-        # TODO: Only call functions on Scaffold members that have the axis denoted by the kwarg
-        # `axis`, if specified.
-        for index, arg in enumerate(args):
-            if isinstance(arg, Scaffold):
-                # If we find any Scaffold object, deal with each member independently
-                results = {}
-                for key, value in arg.iteritems():
-                    # Replace the Scaffold with a member
-                    args[index] = value
-
-                    # Determine the result
-                    results[key] = proxy(*args, **kwargs)
-
-                # If all values are Blocks, create a new Scaffold object
-                if all(isinstance(result, Block) for result in results.values()):
-                    return Scaffold(results)
-
-                # Otherwise, just return the dictionary
-                return results
+        if any(isinstance(arg, Scaffold) for arg in args):
+            return peel_scaffolds(proxy, *args, **kwargs)
 
         # We figure out which Block is first in the args, which will either be `self` (for a bound
         # method) or simply the first Block for an unbound method.
@@ -621,6 +612,49 @@ def closure(func, params):
     return proxy
 
 
+def peel_scaffolds(func, *args, **kwargs):
+    """
+    Call `func` repeatedly with a Scaffold in `args` replaced with member Blocks, and return a
+    Scaffold or dict representing the result.
+
+    If the `axis` keyword argument is present, Scaffold members without that `axis` will not be
+    transformed according to func, but simply placed in the output data structure.
+
+    Only one Scaffold argument may be present. I can't think of any applications for more than one
+    Scaffold argument anyways. If you really want it, handle it yourself.
+    """
+    # Allow assignment to args
+    args = list(args)
+
+    # Make sure there's only one Scaffold argument
+    scaffolds = [(index, arg) for index, arg in enumerate(args) if isinstance(arg, Scaffold)]
+    if len(scaffolds) != 1:
+        raise Exception("Only one Scaffold argument may be provided to a function.")
+
+    # Get the single scaffold
+    index, scaffold = scaffolds[0]
+
+    # Look up the axis, for deciding which members to manipulate
+    axis = kwargs.get('axis')
+
+    results = {}
+    for key, value in scaffold.iteritems():
+        if axis is not None and axis not in value.axes:
+            # Pass the value through if the axis is specified but not present in the member
+            results[key] = scaffold[key]
+        else:
+            # Otherwise, replace the argument with the Block and save the result
+            args[index] = value
+            results[key] = func(*args, **kwargs)
+
+    # If all values are Blocks, create a new Scaffold object
+    if all(isinstance(result, Block) for result in results.values()):
+        return Scaffold(results)
+
+    # Otherwise just return the dictionary
+    return results
+
+
 def transform_axes(params, first, *args, **kwargs):
     if params.transform_axes is not None:
         return params.transform_axes(*args, **kwargs)
@@ -643,7 +677,11 @@ def transform_args(params, first, *args, **kwargs):
 
     # Rewrite the axis keyword argument
     if 'axis' in kwargs:
-        kwargs['axis'] = first.axes.index(kwargs['axis'])
+        axis = kwargs['axis']
+        if axis is None:
+            del kwargs['axis']
+        if axis is not None:
+            kwargs['axis'] = first.axes.index(axis)
 
     return args, kwargs
 

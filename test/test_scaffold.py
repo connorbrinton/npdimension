@@ -26,4 +26,4 @@ def test_initialization():
 
     # Slice a smaller portion of the map
     band = scaffold(latitude=[0, 1])
-    print(band)
+#    print(band)

@@ -4,6 +4,7 @@ A dictionary-like container for aligned npdimension Blocks.
 
 # TODO: Verify that shapes match according to axes on insertion
 
+from __future__ import print_function
 import numpy as np
 
 class Scaffold(dict):
@@ -36,6 +37,10 @@ class Scaffold(dict):
             return value(**kwargs)
 
         return self.apply(index)
+
+    def __repr__(self):
+        normally = super(Scaffold, self).__repr__()
+        return "%s(%s)" % (Scaffold.__name__, normally)
 
     @property
     def shape(self):

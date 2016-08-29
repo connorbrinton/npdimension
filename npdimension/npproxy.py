@@ -5,6 +5,7 @@ Define all npdimension operators.
 # pylint: disable=W0108
 # pylint: disable=W0613
 
+from __future__ import print_function
 from collections import namedtuple
 from types import ModuleType
 import numpy as np
@@ -58,23 +59,45 @@ def remove_axis(*args, **kwargs):
 
 def only_singular_axes(original, *args, **kwargs):
     # If there was only one dimension, keep using the old axes
-    first = get_next_block(args)
-    if len(first.axes) == 1:
-        return first.axes
+    block = get_next_block(args)
+    if len(block.axes) == 1:
+        return block.axes
 
     # Otherwise, give up
     return None
 
 
 def swap_axes(*args, **kwargs):
-    pass # TODO: Implement
+    # Load the block
+    block = get_next_block(args)
+
+    # Find the indices of the axes to swap
+    one = block.axes.index(args[1])
+    two = block.axes.index(args[2])
+
+    # Make a copy of the axes and swap
+    axes = list(block.axes)
+    axes[one], axes[two] = axes[two], axes[one]
+
+    return axes
 
 
 def transform_swap_axes_args(*args, **kwargs):
-    pass # TODO: Implement
+    # Make args mutable
+    args = list(args)
+
+    # Load the block axes
+    axes = get_next_block(args).axes
+
+    # Replace axis arguments with numbers
+    args[1] = axes.index(args[1])
+    args[2] = axes.index(args[2])
+
+    return args, kwargs
+
 
 # Data structure for proxied object members
-Parameters = namedtuple('Parameters', ['transform_axes', 'transform_args'])
+Parameters = namedtuple('Parameters', ['transform_axes', 'transform_args', 'override'])
 
 # Provide Parameters defaults
 Parameters.__new__.__defaults__ = (None,) * len(Parameters._fields)
@@ -90,7 +113,7 @@ NP_MEMBERS = {
     # 'amax': Parameters(), # TODO: Implement
     # 'amin': Parameters(), # TODO: Implement
     # 'angle': Parameters(), # TODO: Implement
-    # 'any': Parameters(), # TODO: Implement
+    'any': Parameters(transform_axes=remove_axis), # TODO: Implement
     # 'append': Parameters(), # TODO: Implement
     # 'apply_along_axis': Parameters(), # TODO: Implement
     # 'apply_over_axes': Parameters(), # TODO: Implement
@@ -188,7 +211,7 @@ NP_MEMBERS = {
     # 'i0': Parameters(), # TODO: Implement
     # 'identity': Parameters(), # TODO: Implement
     # 'imag': Parameters(), # TODO: Implement
-    # 'in1d': Parameters(), # TODO: Implement
+    'in1d': Parameters(),
     # 'indices': Parameters(), # TODO: Implement
     # 'info': Parameters(), # TODO: Implement
     # 'insert': Parameters(), # TODO: Implement
@@ -396,15 +419,15 @@ NDARRAY_MEMBERS = {
     '__div__': Parameters(),
     '__divmod__': Parameters(),
     # '__doc__': Parameters(),
-    '__eq__': Parameters(),
+    '__eq__': Parameters(override=True),
     '__float__': Parameters(),
     '__floordiv__': Parameters(),
     # '__format__': Parameters(),
-    '__ge__': Parameters(),
+    '__ge__': Parameters(override=True),
     # '__getattribute__': Parameters(),
     '__getitem__': Parameters(),
     '__getslice__': Parameters(),
-    '__gt__': Parameters(),
+    '__gt__': Parameters(override=True),
     # '__hash__': Parameters(), # This is just None in ndarray, strange...
     '__hex__': Parameters(),
     '__iadd__': Parameters(),
@@ -415,7 +438,7 @@ NDARRAY_MEMBERS = {
     '__imod__': Parameters(),
     '__imul__': Parameters(),
     '__index__': Parameters(),
-    '__init__': Parameters(),
+    # '__init__': Parameters(),
     '__int__': Parameters(),
     '__invert__': Parameters(),
     '__ior__': Parameters(),
@@ -425,16 +448,16 @@ NDARRAY_MEMBERS = {
     '__iter__': Parameters(),
     '__itruediv__': Parameters(),
     '__ixor__': Parameters(),
-    '__le__': Parameters(),
+    '__le__': Parameters(override=True),
     '__len__': Parameters(),
     '__long__': Parameters(),
     '__lshift__': Parameters(),
-    '__lt__': Parameters(),
+    '__lt__': Parameters(override=True),
     '__mod__': Parameters(),
     '__mul__': Parameters(),
-    '__ne__': Parameters(),
+    '__ne__': Parameters(override=True),
     '__neg__': Parameters(),
-    '__new__': Parameters(),
+    # '__new__': Parameters(),
     '__nonzero__': Parameters(),
     '__oct__': Parameters(),
     '__or__': Parameters(),
@@ -463,7 +486,7 @@ NDARRAY_MEMBERS = {
     '__setslice__': Parameters(),
     # '__setstate__': Parameters(),
     # '__sizeof__': Parameters(),
-    '__str__': Parameters(),
+    # '__str__': Parameters(),
     '__sub__': Parameters(),
     # '__subclasshook__': Parameters(),
     '__truediv__': Parameters(),
@@ -690,6 +713,13 @@ def load_proxies(source, which, destination):
     """
     Load proxies to functions from `source` according to `which` into `destination`.
     """
+    # Generate a filter for injectable attributes
+    def injectable(name, value, destination):
+        return not hasattr(destination, name) or isinstance(value, Parameters) and value.override
+
+    # Only inject attributes that can be injected
+    which = {k: v for k, v in which.iteritems() if injectable(k, v, destination)}
+
     # For each member listed in which
     for name, value in which.iteritems():
         # Load the member
@@ -706,5 +736,4 @@ def load_proxies(source, which, destination):
             load_proxies(member, value, proxy)
 
         # Store in destination
-        if not hasattr(destination, name):
-            setattr(destination, name, proxy)
+        setattr(destination, name, proxy)

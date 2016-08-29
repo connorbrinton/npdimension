@@ -15,3 +15,12 @@ def test_functions():
 
 def test_swapaxes():
     npd.Block(np.arange(9).reshape(-1, 3), axes=['one', 'two']).swapaxes('one', 'two')
+
+def test_getitem():
+    block = npd.Block(np.arange(9).reshape(-1, 3), axes=['one', 'two'])
+    assert block[0, 0] == 0
+    assert block[:, 0].axes == ['one']
+    assert block[0, :].axes == ['two']
+    assert block[:, :].axes == ['one', 'two']
+    assert block[dict(one=0)] == npd.Block(np.arange(3), axes=['two'])
+    assert block[dict()] == block

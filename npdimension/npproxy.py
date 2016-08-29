@@ -96,8 +96,63 @@ def transform_swap_axes_args(*args, **kwargs):
     return args, kwargs
 
 
+def is_scalar(value):
+    return not hasattr(value, '__len__') and not isinstance(value, slice)
+
+
+def transform_getitem_axes(*args, **kwargs):
+    """
+    Remove axes indexed by scalar values.
+    """
+    # Look up the block
+    block = get_next_block(args)
+
+    # Look up the indexer
+    indexer = args[1]
+
+    # Check its type (similar to xarray semantics)
+    if isinstance(indexer, tuple):
+        return [axis for axis, index in zip(block.axes, indexer) if not is_scalar(index)]
+    else:
+        # It must be a dictionary
+        return [axis for axis in block.axes if axis not in indexer or not is_scalar(indexer[axis])]
+
+
+def transform_getitem_args(*args, **kwargs):
+    """
+    Prepare indexing arguments for ndarray.__getitem__ by replacing a dict indexer with an
+    appropriate indexing tuple.
+    """
+    # Look up the indexer
+    indexer = args[1]
+
+    # Don't do anything if it's a not a dictionary
+    if not isinstance(indexer, dict):
+        return args, kwargs
+
+    # Make the arguments mutable
+    args = list(args)
+
+    # If it's a dictionary, we'll need block information
+    block = get_next_block(args)
+
+    # Build a new slice object
+    slicer = tuple(indexer[axis] if axis in indexer else slice(None) for axis in block.axes)
+
+    # Replace the old indexer
+    args[1] = slicer
+
+    # Return the new arguments
+    return args, kwargs
+
+
 # Data structure for proxied object members
-Parameters = namedtuple('Parameters', ['transform_axes', 'transform_args', 'override'])
+Parameters = namedtuple('Parameters', [
+    'transform_axes', # Generate the new axes for the returned Block
+    'transform_args', # Prepare the arguments for the numpy function
+    'override', # Inject this member even if it already exists
+    'passthrough' # Directly return the result of the numpy function
+])
 
 # Provide Parameters defaults
 Parameters.__new__.__defaults__ = (None,) * len(Parameters._fields)
@@ -419,13 +474,14 @@ NDARRAY_MEMBERS = {
     '__div__': Parameters(),
     '__divmod__': Parameters(),
     # '__doc__': Parameters(),
-    '__eq__': Parameters(override=True),
+    '__eq__': Parameters(),
     '__float__': Parameters(),
     '__floordiv__': Parameters(),
     # '__format__': Parameters(),
     '__ge__': Parameters(override=True),
     # '__getattribute__': Parameters(),
-    '__getitem__': Parameters(),
+    '__getitem__': Parameters(transform_axes=transform_getitem_axes,
+                              transform_args=transform_getitem_args),
     '__getslice__': Parameters(),
     '__gt__': Parameters(override=True),
     # '__hash__': Parameters(), # This is just None in ndarray, strange...
@@ -482,7 +538,7 @@ NDARRAY_MEMBERS = {
     '__rtruediv__': Parameters(),
     '__rxor__': Parameters(),
     # '__setattr__': Parameters(),
-    '__setitem__': Parameters(),
+    '__setitem__': Parameters(transform_args=transform_getitem_args),
     '__setslice__': Parameters(),
     # '__setstate__': Parameters(),
     # '__sizeof__': Parameters(),

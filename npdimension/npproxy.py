@@ -100,7 +100,7 @@ def is_scalar(value):
     return not hasattr(value, '__len__') and not isinstance(value, slice)
 
 
-def transform_getitem_axes(*args, **kwargs):
+def transform_indexing_axes(*args, **kwargs):
     """
     Remove axes indexed by scalar values.
     """
@@ -118,7 +118,7 @@ def transform_getitem_axes(*args, **kwargs):
         return [axis for axis in block.axes if axis not in indexer or not is_scalar(indexer[axis])]
 
 
-def transform_getitem_args(*args, **kwargs):
+def transform_indexing_args(*args, **kwargs):
     """
     Prepare indexing arguments for ndarray.__getitem__ by replacing a dict indexer with an
     appropriate indexing tuple.
@@ -480,8 +480,8 @@ NDARRAY_MEMBERS = {
     # '__format__': Parameters(),
     '__ge__': Parameters(override=True),
     # '__getattribute__': Parameters(),
-    '__getitem__': Parameters(transform_axes=transform_getitem_axes,
-                              transform_args=transform_getitem_args),
+    '__getitem__': Parameters(transform_axes=transform_indexing_axes,
+                              transform_args=transform_indexing_args),
     '__getslice__': Parameters(),
     '__gt__': Parameters(override=True),
     # '__hash__': Parameters(), # This is just None in ndarray, strange...
@@ -538,7 +538,7 @@ NDARRAY_MEMBERS = {
     '__rtruediv__': Parameters(),
     '__rxor__': Parameters(),
     # '__setattr__': Parameters(),
-    '__setitem__': Parameters(transform_args=transform_getitem_args),
+    '__setitem__': Parameters(transform_args=transform_indexing_args),
     '__setslice__': Parameters(),
     # '__setstate__': Parameters(),
     # '__sizeof__': Parameters(),

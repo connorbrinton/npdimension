@@ -81,7 +81,7 @@ class Block(object):
         """
         Return an `NPDIndexer` that slices this `Block` according to the labels given in `index`.
         """
-        pass
+        return NPDIndexer(self, index)
 
     @property
     def shape(self):

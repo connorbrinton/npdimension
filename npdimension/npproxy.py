@@ -90,6 +90,23 @@ def only_singular_axes(*args, **kwargs):
     return None
 
 
+def secondary_axes(*args, **kwargs):
+    """
+    Use the axes of the secondary block, if present (otherwise return an ndarray).
+
+    The secondary block is that which comes immediately after the subject block, which is either the
+    first argument or self, depending on whether the method is bound or unbound.
+    """
+    iterator = iter(args)
+    block = get_next_block(iterator)
+    secondary = get_next_block(iterator)
+
+    if secondary is not None:
+        return secondary.axes
+
+    return None
+
+
 def swap_axes(*args, **kwargs):
     # Load the block
     block = get_next_block(args)
@@ -223,7 +240,7 @@ NP_COMMON = {
     # 'reshape': Parameters(),  # TODO: transform_axes
     # 'resize': Parameters(),  # TODO: transform_axes
     'round': Parameters(),
-    'searchsorted': Parameters(transform_axes=only_axis),
+    'searchsorted': Parameters(transform_axes=secondary_axes),
     # 'size': Parameters(),  # TODO
     'sort': Parameters(),
     'squeeze': Parameters(),  # TODO: transform_axes

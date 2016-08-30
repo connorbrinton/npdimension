@@ -6,13 +6,21 @@ container.
 # Imports
 import sys
 import numpy
-from block import Block
-from scaffold import Scaffold
+
+import npd
+import block
+import scaffold
 import npproxy
 
 # Load numpy members from npproxy
-npproxy.load_proxies(numpy, npproxy.NP_MEMBERS, sys.modules[__name__])
-npproxy.load_proxies(numpy.ndarray, npproxy.NDARRAY_MEMBERS, Block)
-npproxy.load_proxies(numpy.ndarray, npproxy.NDARRAY_MEMBERS, Scaffold)
+npproxy.load_proxies(numpy, npproxy.NP_MEMBERS, npd)
+npproxy.load_proxies(numpy.ndarray, npproxy.NDARRAY_MEMBERS, block.Block)
+npproxy.load_proxies(numpy.ndarray, npproxy.NDARRAY_MEMBERS, scaffold.Scaffold)
 
-__all__ = ['Block', 'Scaffold'] + list(npproxy.NP_MEMBERS.keys())
+# Load all top-level members
+from npd import *
+from block import Block
+from scaffold import Scaffold
+from npdindexer import NPDIndexer
+
+__all__ = ['Block', 'NPDIndexer', 'Scaffold'] + list(npproxy.NP_MEMBERS.keys())

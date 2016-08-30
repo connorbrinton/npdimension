@@ -7,7 +7,9 @@ Define all npdimension operators.
 
 from __future__ import print_function
 from collections import namedtuple
+import itertools
 from types import ModuleType
+
 import numpy as np
 from block import Block
 from scaffold import Scaffold
@@ -32,20 +34,41 @@ def only_axis(*args, **kwargs):
 
 
 def insert_axes(*args, **kwargs):
-    # Get the first and second arguments
+    # Get the block, indexer, and axis arguments
     iterator = iter(args)
-    first = get_next_block(iterator)
-    second = get_next_block(iterator)
+    block = get_next_block(iterator)
+    indexer = next(iterator) # We require that the indexer come immediately after the Block
+    axis = kwargs.get('axis')
 
-    # TODO: If no Block was found, look for something simply list-like
-    if second is None:
-        raise Exception("A Block is required for this function.")
+    if indexer is None:
+        raise Exception("An indexing argument is required.")
 
-    # Find the index of the axis argument in the first axes
-    index = first.axes.index(kwargs['axis'])
+    # If the indexer is a Block, merge its axes with `block`'s
+    if isinstance(indexer, Block):
+        # Make sure there's an axis argument
+        if axis is None:
+            raise Exception("The axis keyword argument is required when indexing with a Block.")
 
-    # Substitute the second Block's axes where the specified axis exists
-    return first.axes[:index] + second.axes + first.axes[(index + 1):]
+        # Find the index of the axis argument in the first axes
+        index = block.axes.index(axis)
+
+        # Substitute the second Block's axes where the specified axis exists
+        return block.axes[:index] + indexer.axes + block.axes[(index + 1):]
+
+    # If it's a scalar, just return the normal axes or nothing, depending on the axis kwarg
+    if np.isscalar(indexer):
+        # With no axis, these functions use the flattened array
+        if axis is None:
+            return only_singular_axes(block)
+
+        # Otherwise, remove the requested axis
+        return remove_axis(block, axis=axis)
+
+    # If it's not a Block or a scalar, make sure it's 1D return the normal axes
+    if np.ndim(indexer) != 1:
+        raise Exception("A Block, 1D array-like object, or scalar is required for this function.")
+
+    return block.axes
 
 
 def remove_axis(*args, **kwargs):
@@ -57,7 +80,7 @@ def remove_axis(*args, **kwargs):
     return [original for original in get_next_block(args).axes if original != kwargs['axis']]
 
 
-def only_singular_axes(original, *args, **kwargs):
+def only_singular_axes(*args, **kwargs):
     # If there was only one dimension, keep using the old axes
     block = get_next_block(args)
     if len(block.axes) == 1:
@@ -96,10 +119,6 @@ def transform_swap_axes_args(*args, **kwargs):
     return args, kwargs
 
 
-def is_scalar(value):
-    return not hasattr(value, '__len__') and not isinstance(value, slice)
-
-
 def transform_indexing_axes(*args, **kwargs):
     """
     Remove axes indexed by scalar values.
@@ -110,12 +129,31 @@ def transform_indexing_axes(*args, **kwargs):
     # Look up the indexer
     indexer = args[1]
 
+    # Scalars and non-tuple array-like objects are treated like single-element tuples
+    # Basically anything except for a tuple or dictionary
+    if not isinstance(indexer, (tuple, dict)):
+        indexer = (indexer,)
+
+    # Tuples are filled to the full dimensionality of the Block
+    if isinstance(indexer, tuple):
+        # Ellipses in tuples are replaced to fill the tuple with full slices
+        if Ellipsis in indexer:
+            index = indexer.index(Ellipsis)
+            left, right = indexer[:(index - 1)], indexer[index:]
+        else:
+            left, right = indexer, []
+        filler = [slice(None)] * (len(block.axes) - len(left) - len(right))
+        indexer = tuple(itertools.chain(left, filler, right))
+
     # Check its type (similar to xarray semantics)
     if isinstance(indexer, tuple):
-        return [axis for axis, index in zip(block.axes, indexer) if not is_scalar(index)]
+        return [axis for axis, index in zip(block.axes, indexer) if not np.isscalar(index)]
+    elif isinstance(indexer, dict):
+        return [axis for axis in block.axes if axis not in indexer or not np.isscalar(indexer[axis])]
     else:
-        # It must be a dictionary
-        return [axis for axis in block.axes if axis not in indexer or not is_scalar(indexer[axis])]
+        # We don't know this type of selection :(
+        raise Exception("Unknown selection type %s provided. A scalar, tuple, or dict is expected."
+                        % repr(type(indexer).__name__))
 
 
 def transform_indexing_args(*args, **kwargs):
@@ -157,25 +195,59 @@ Parameters = namedtuple('Parameters', [
 # Provide Parameters defaults
 Parameters.__new__.__defaults__ = (None,) * len(Parameters._fields)
 
+# Functions shared between the numpy module and the ndarray object
+NP_COMMON = {
+    'all': Parameters(transform_axes=remove_axis),
+    'any': Parameters(transform_axes=remove_axis),
+    'argmax': Parameters(transform_axes=only_axis),
+    'argmin': Parameters(transform_axes=only_axis),
+    'argpartition': Parameters(transform_axes=only_axis),
+    'argsort': Parameters(transform_axes=only_axis),
+    'choose': Parameters(),
+    'clip': Parameters(),
+    'compress': Parameters(),
+    'copy': Parameters(),
+    'cumprod': Parameters(),
+    'cumsum': Parameters(),
+    'diagonal': Parameters(),
+    'imag': Parameters(),
+    'mean': Parameters(transform_axes=remove_axis),
+    'nonzero': Parameters(),
+    'partition': Parameters(),
+    'prod': Parameters(transform_axes=remove_axis),
+    'ptp': Parameters(transform_axes=remove_axis),
+    'put': Parameters(),
+    'ravel': Parameters(transform_axes=only_singular_axes),
+    'real': Parameters(),
+    # 'repeat': Parameters(),  # TODO: transform_axes
+    # 'reshape': Parameters(),  # TODO: transform_axes
+    # 'resize': Parameters(),  # TODO: transform_axes
+    'round': Parameters(),
+    'searchsorted': Parameters(transform_axes=only_axis),
+    # 'size': Parameters(),  # TODO
+    'sort': Parameters(),
+    'squeeze': Parameters(),  # TODO: transform_axes
+    'std': Parameters(transform_axes=remove_axis),
+    'sum': Parameters(transform_axes=remove_axis),
+    'swapaxes': Parameters(transform_axes=swap_axes, transform_args=transform_swap_axes_args),
+    'take': Parameters(transform_axes=insert_axes),
+    'trace': Parameters(),
+    'transpose': Parameters(transform_axes=reverse_axes),
+    'var': Parameters(transform_axes=remove_axis),
+}
 
 # All numpy module functions
 NP_MEMBERS = {
     'alen': Parameters(),
-    # 'all': Parameters(), # TODO: Implement
     # 'allclose': Parameters(), # TODO: Implement
     # 'alltrue': Parameters(), # TODO: Implement
     # 'alterdot': Parameters(), # TODO: Implement
     # 'amax': Parameters(), # TODO: Implement
     # 'amin': Parameters(), # TODO: Implement
     # 'angle': Parameters(), # TODO: Implement
-    'any': Parameters(transform_axes=remove_axis), # TODO: Implement
     # 'append': Parameters(), # TODO: Implement
     # 'apply_along_axis': Parameters(), # TODO: Implement
     # 'apply_over_axes': Parameters(), # TODO: Implement
-    # 'argmax': Parameters(), # TODO: Implement
-    # 'argmin': Parameters(), # TODO: Implement
-    # 'argpartition': Parameters(), # TODO: Implement
-    # 'argsort': Parameters(), # TODO: Implement
     # 'argwhere': Parameters(), # TODO: Implement
     # 'around': Parameters(), # TODO: Implement
     # 'array2string': Parameters(), # TODO: Implement
@@ -205,20 +277,14 @@ NP_MEMBERS = {
     # 'broadcast_to': Parameters(), # TODO: Implement
     # 'byte_bounds': Parameters(), # TODO: Implement
     # 'char': {}, # TODO: Add char functions
-    # 'choose': Parameters(), # TODO: Implement
-    # 'clip': Parameters(), # TODO: Implement
     # 'column_stack': Parameters(), # TODO: Implement
     # 'common_type': Parameters(), # TODO: Implement
-    # 'compress': Parameters(), # TODO: Implement
     # 'convolve': Parameters(), # TODO: Implement
-    # 'copy': Parameters(), # TODO: Implement
     # 'corrcoef': Parameters(), # TODO: Implement
     # 'correlate': Parameters(), # TODO: Implement
     # 'cov': Parameters(), # TODO: Implement
     # 'cross': Parameters(), # TODO: Implement
-    # 'cumprod': Parameters(), # TODO: Implement
     # 'cumproduct': Parameters(), # TODO: Implement
-    # 'cumsum': Parameters(), # TODO: Implement
     # 'delete': Parameters(), # TODO: Implement
     # 'deprecate': Parameters(), # TODO: Implement
     # 'deprecate_with_doc': Parameters(), # TODO: Implement
@@ -226,7 +292,6 @@ NP_MEMBERS = {
     # 'diag_indices': Parameters(), # TODO: Implement
     # 'diag_indices_from': Parameters(), # TODO: Implement
     # 'diagflat': Parameters(), # TODO: Implement
-    # 'diagonal': Parameters(), # TODO: Implement
     # 'diff': Parameters(), # TODO: Implement
     # 'disp': Parameters(), # TODO: Implement
     # 'dsplit': Parameters(), # TODO: Implement
@@ -240,7 +305,7 @@ NP_MEMBERS = {
     # 'fill_diagonal': Parameters(), # TODO: Implement
     # 'find_common_type': Parameters(), # TODO: Implement
     # 'fix': Parameters(), # TODO: Implement
-    # 'flatnonzero': Parameters(), # TODO: Implement
+    'flatnonzero': Parameters(transform_axes=only_singular_axes), # TODO: Implement
     # 'fliplr': Parameters(), # TODO: Implement
     # 'flipud': Parameters(), # TODO: Implement
     # 'fromfunction': Parameters(), # TODO: Implement
@@ -265,7 +330,6 @@ NP_MEMBERS = {
     # 'hstack': Parameters(), # TODO: Implement
     # 'i0': Parameters(), # TODO: Implement
     # 'identity': Parameters(), # TODO: Implement
-    # 'imag': Parameters(), # TODO: Implement
     'in1d': Parameters(),
     # 'indices': Parameters(), # TODO: Implement
     # 'info': Parameters(), # TODO: Implement
@@ -325,7 +389,6 @@ NP_MEMBERS = {
     # 'mat': Parameters(), # TODO: Implement
     # 'math': {}, # TODO: Add math functions
     # 'maximum_sctype': Parameters(), # TODO: Implement
-    # 'mean': Parameters(), # TODO: Implement
     # 'median': Parameters(), # TODO: Implement
     # 'meshgrid': Parameters(), # TODO: Implement
     # 'mintypecode': Parameters(), # TODO: Implement
@@ -346,7 +409,6 @@ NP_MEMBERS = {
     # 'nanvar': Parameters(), # TODO: Implement
     # 'ndfromtxt': Parameters(), # TODO: Implement
     # 'ndim': Parameters(), # TODO: Implement
-    # 'nonzero': Parameters(), # TODO: Implement
     # 'nper': Parameters(), # TODO: Implement
     # 'npv': Parameters(), # TODO: Implement
     # 'obj2sctype': Parameters(), # TODO: Implement
@@ -354,7 +416,6 @@ NP_MEMBERS = {
     # 'ones_like': Parameters(), # TODO: Implement
     # 'outer': Parameters(), # TODO: Implement
     # 'pad': Parameters(), # TODO: Implement
-    # 'partition': Parameters(), # TODO: Implement
     # 'percentile': Parameters(), # TODO: Implement
     # 'piecewise': Parameters(), # TODO: Implement
     # 'pkgload': Parameters(), # TODO: Implement
@@ -370,30 +431,21 @@ NP_MEMBERS = {
     # 'polysub': Parameters(), # TODO: Implement
     # 'polyval': Parameters(), # TODO: Implement
     # 'ppmt': Parameters(), # TODO: Implement
-    # 'prod': Parameters(), # TODO: Implement
     # 'product': Parameters(), # TODO: Implement
-    # 'ptp': Parameters(), # TODO: Implement
-    # 'put': Parameters(), # TODO: Implement
     # 'pv': Parameters(), # TODO: Implement
     # 'random': {}, # TODO: Add random functions
     # 'rank': Parameters(), # TODO: Implement
     # 'rate': Parameters(), # TODO: Implement
-    # 'ravel': Parameters(), # TODO: Implement
-    # 'real': Parameters(), # TODO: Implement
     # 'real_if_close': Parameters(), # TODO: Implement
     # 'rec': {} # TODO: Add rec functions
     # 'recfromcsv': Parameters(), # TODO: Implement
     # 'recfromtxt': Parameters(), # TODO: Implement
-    # 'repeat': Parameters(), # TODO: Implement
     # 'require': Parameters(), # TODO: Implement
-    # 'reshape': Parameters(), # TODO: Implement
-    # 'resize': Parameters(), # TODO: Implement
     # 'restoredot': Parameters(), # TODO: Implement
     # 'roll': Parameters(), # TODO: Implement
     # 'rollaxis': Parameters(), # TODO: Implement
     # 'roots': Parameters(), # TODO: Implement
     # 'rot90': Parameters(), # TODO: Implement
-    # 'round_': Parameters(), # TODO: Implement
     # 'row_stack': Parameters(), # TODO: Implement
     # 'safe_eval': Parameters(), # TODO: Implement
     # 'save': Parameters(), # TODO: Implement
@@ -401,7 +453,6 @@ NP_MEMBERS = {
     # 'savez': Parameters(), # TODO: Implement
     # 'savez_compressed': Parameters(), # TODO: Implement
     # 'sctype2char': Parameters(), # TODO: Implement
-    # 'searchsorted': Parameters(), # TODO: Implement
     # 'select': Parameters(), # TODO: Implement
     # 'set_printoptions': Parameters(), # TODO: Implement
     # 'set_string_function': Parameters(), # TODO: Implement
@@ -413,22 +464,13 @@ NP_MEMBERS = {
     # 'shape': Parameters(), # TODO: Implement
     # 'show_config': Parameters(), # TODO: Implement
     # 'sinc': Parameters(), # TODO: Implement
-    # 'size': Parameters(), # TODO: Implement
     # 'sometrue': Parameters(), # TODO: Implement
-    # 'sort': Parameters(), # TODO: Implement
     # 'sort_complex': Parameters(), # TODO: Implement
     # 'source': Parameters(), # TODO: Implement
     # 'split': Parameters(), # TODO: Implement
-    # 'squeeze': Parameters(), # TODO: Implement
     # 'stack': Parameters(), # TODO: Implement
-    # 'std': Parameters(), # TODO: Implement
-    # 'sum': Parameters(), # TODO: Implement
-    # 'swapaxes': Parameters(), # TODO: Implement
-    # 'take': Parameters(), # TODO: Implement
     # 'tensordot': Parameters(), # TODO: Implement
     # 'tile': Parameters(), # TODO: Implement
-    # 'trace': Parameters(), # TODO: Implement
-    # 'transpose': Parameters(), # TODO: Implement
     # 'trapz': Parameters(), # TODO: Implement
     # 'tri': Parameters(), # TODO: Implement
     # 'tril': Parameters(), # TODO: Implement
@@ -443,13 +485,12 @@ NP_MEMBERS = {
     # 'unique': Parameters(), # TODO: Implement
     # 'unwrap': Parameters(), # TODO: Implement
     # 'vander': Parameters(), # TODO: Implement
-    # 'var': Parameters(), # TODO: Implement
     # 'vsplit': Parameters(), # TODO: Implement
     # 'vstack': Parameters(), # TODO: Implement
     # 'who': Parameters(), # TODO: Implement
     # 'zeros_like': Parameters() # TODO: Implement
 }
-
+NP_MEMBERS.update(NP_COMMON)
 
 # All numpy ndarray member functions and attributes
 NDARRAY_MEMBERS = {
@@ -457,7 +498,7 @@ NDARRAY_MEMBERS = {
     '__abs__': Parameters(),
     '__add__': Parameters(),
     '__and__': Parameters(),
-    '__array__': Parameters(),
+    # '__array__': Parameters(passthrough=False),
     # '__array_finalize__': Parameters(),
     # '__array_interface__': Parameters(),
     # '__array_prepare__': Parameters(),
@@ -547,26 +588,13 @@ NDARRAY_MEMBERS = {
     # '__subclasshook__': Parameters(),
     '__truediv__': Parameters(),
     '__xor__': Parameters(),
-    'all': Parameters(transform_axes=remove_axis),
-    'any': Parameters(transform_axes=remove_axis),
-    'argmax': Parameters(transform_axes=only_axis),
-    'argmin': Parameters(transform_axes=only_axis),
-    'argpartition': Parameters(transform_axes=only_axis),
-    'argsort': Parameters(transform_axes=only_axis),
     'astype': Parameters(),
     'base': Parameters(),
     'byteswap': Parameters(),
-    'choose': Parameters(),  # TODO: transform_axes
-    'clip': Parameters(),
-    'compress': Parameters(),
     'conj': Parameters(),
     'conjugate': Parameters(),
-    'copy': Parameters(),
     'ctypes': Parameters(),
-    'cumprod': Parameters(),  # TODO: transform_axes
-    'cumsum': Parameters(),  # TODO: transform_axes
     # 'data': Parameters(),
-    'diagonal': Parameters(),
     'dot': Parameters(),
     'dtype': Parameters(),
     # 'dump': Parameters(),
@@ -576,48 +604,25 @@ NDARRAY_MEMBERS = {
     'flat': Parameters(),
     'flatten': Parameters(transform_axes=only_singular_axes),
     'getfield': Parameters(),
-    'imag': Parameters(),
     'item': Parameters(),
     'itemset': Parameters(),
     'itemsize': Parameters(),
     'max': Parameters(transform_axes=remove_axis),
-    'mean': Parameters(transform_axes=remove_axis),
     'min': Parameters(transform_axes=remove_axis),
     'nbytes': Parameters(),
     'ndim': Parameters(),
     'newbyteorder': Parameters(),
-    'nonzero': Parameters(),
-    'partition': Parameters(),
-    'prod': Parameters(transform_axes=remove_axis),
-    'ptp': Parameters(transform_axes=remove_axis),
-    'put': Parameters(),
-    'ravel': Parameters(transform_axes=only_singular_axes),
-    'real': Parameters(),
-    'repeat': Parameters(),  # TODO: transform_axes
-    'reshape': Parameters(),  # TODO: transform_axes
-    'resize': Parameters(),  # TODO: transform_axes
-    'round': Parameters(),
-    'searchsorted': Parameters(),  # TODO
     'setfield': Parameters(),
     'setflags': Parameters(),
     # 'shape': Parameters(),
-    'size': Parameters(),  # TODO
-    'sort': Parameters(),
-    'squeeze': Parameters(),  # TODO: transform_axes
-    'std': Parameters(transform_axes=remove_axis),
     'strides': Parameters(),
-    'sum': Parameters(transform_axes=remove_axis),
-    'swapaxes': Parameters(transform_axes=swap_axes, transform_args=transform_swap_axes_args),  # TODO: transform_axes, transform_args
-    'take': Parameters(transform_axes=insert_axes),
     'tobytes': Parameters(),
     # 'tofile': Parameters(),
     # 'tolist': Parameters(),
     # 'tostring': Parameters(),
-    'trace': Parameters(),
-    'transpose': Parameters(transform_axes=reverse_axes),
-    'var': Parameters(transform_axes=remove_axis),
     'view': Parameters()
 }
+NDARRAY_MEMBERS.update(NP_COMMON)
 
 
 def closure(func, params):
@@ -667,6 +672,10 @@ def closure(func, params):
 
         # Obtain a result
         result = func(*args, **kwargs)
+
+        # If we're in passthrough mode, just return it
+        if params.passthrough:
+            return result
 
         # If it's not an ndarray, just return it
         if not isinstance(result, np.ndarray):

@@ -4,6 +4,8 @@ An ndarray-like class with labelled dimensions.
 
 import numpy as np
 
+from npdindexer import NPDIndexer
+
 # pylint: disable=W0212
 
 class Block(object):
@@ -40,7 +42,11 @@ class Block(object):
         return Block(indexed, axes=self._axes)
 
     def __eq__(self, other):
-        return self.axes == other.axes and np.all(self._data == other._data)
+        if hasattr(other, 'axes') and self.axes != other.axes:
+            return False
+        if hasattr(other, '_data'):
+            return self._data == other._data
+        return self._data == other
 
     def __repr__(self):
         parts = []
@@ -64,12 +70,18 @@ class Block(object):
         return "".join(parts)
 
     @property
+    def axes(self):
+        return self._axes
+
+    @property
     def data(self):
         return self._data
 
-    @property
-    def axes(self):
-        return self._axes
+    def loc(self, index):
+        """
+        Return an `NPDIndexer` that slices this `Block` according to the labels given in `index`.
+        """
+        pass
 
     @property
     def shape(self):

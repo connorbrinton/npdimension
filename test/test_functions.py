@@ -22,5 +22,10 @@ def test_getitem():
     assert block[:, 0].axes == ['one']
     assert block[0, :].axes == ['two']
     assert block[:, :].axes == ['one', 'two']
-    assert block[dict(one=0)] == npd.Block(np.arange(3), axes=['two'])
-    assert block[dict()] == block
+    assert np.all(block[dict(one=0)] == npd.Block(np.arange(3), axes=['two']))
+    assert np.all(block[dict()] == block)
+
+    single = npd.Block(np.arange(9) + 10, axes=['one'])
+    assert single[0] == 10
+    assert single[8] == 18
+    assert np.all(single[[0, 1]] == [10, 11])

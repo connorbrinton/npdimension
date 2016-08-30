@@ -42,6 +42,17 @@ class Scaffold(dict):
         normally = super(Scaffold, self).__repr__()
         return "%s(%s)" % (Scaffold.__name__, normally)
 
+    def loc(self, index):
+        """
+        Returns a NPDIndexer indexing on the member named `index`.
+
+        The member named `index` must be a 1D array. Indexing and slicing will take place along the
+        axis of this member. The returned NPDIndexer reacts to indexing by:
+        (1) Looking up the indices of the indexed values
+        (2) Returning this Scaffold sliced according to the indices of the indexed values.
+        """
+        return NPDIndexer(self, self[index])
+
     @property
     def shape(self):
         """

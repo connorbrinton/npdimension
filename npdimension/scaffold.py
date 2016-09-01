@@ -5,42 +5,55 @@ A dictionary-like container for aligned npdimension Blocks.
 # TODO: Verify that shapes match according to axes on insertion
 
 from __future__ import print_function
-import numpy as np
+
+import six
+
+from npdindexer import NPDIndexer
+
 
 class Scaffold(dict):
+    def __getitem__(self, selection):
+        # If a string is requested, return it
+        if isinstance(selection, six.string_types):
+            return super(Scaffold, self).__getitem__(selection)
 
-    def apply(self, function, *args, **kwargs):
-        """
-        Return a new dict where `function` has been applied to all members of the dictionary with
-        additional arguments `args` and `kwargs`.
-
-        If the keyword argument `axis` is provided, the function will only be applied to dictionary
-        members containing the given axis.
-        """
-        applied = Scaffold()
-        for key, value in self.iteritems():
-            if 'axis' not in kwargs:
-                applied[key] = function(value, *args, **kwargs)
-            else:
-                if kwargs['axis'] in value.axes:
-                    applied[key] = function(value, *args, **kwargs)
-                else:
+        # Otherwise, slice everything with applicable axes according to selection
+        if isinstance(selection, dict):
+            applied = Scaffold()
+            axes = set(selection.keys())
+            for key, value in self.iteritems():
+                # Determine if the selection affects the Scaffold member
+                intersection = axes.intersection(value.axes)
+                if len(intersection) == 0:
                     applied[key] = value
+                else:
+                    subselection = {k: v for k, v in selection.iteritems() if k in intersection}
+                    applied[key] = value[subselection]
+            return applied
 
-        return applied
+        raise Exception("Scaffolds can only be subscripted with a string or dictionary.")
 
-    def __call__(self, **kwargs):
-        """
-        Perform indexing on the elements in the Scaffold according to dimension names.
-        """
-        def index(value):
-            return value(**kwargs)
 
-        return self.apply(index)
+    def __setitem__(self, selection, value):
+        if isinstance(selection, six.string_types):
+            return super(Scaffold, self).__setitem__(selection, value)
+
+        raise Exception("Only string types can be used to set Scaffold members.")
+
 
     def __repr__(self):
         normally = super(Scaffold, self).__repr__()
         return "%s(%s)" % (Scaffold.__name__, normally)
+
+    def axes(self):
+        """
+        Return an unordered set representing the axes present in this Scaffold.
+        """
+        axes = set()
+        for value in self.itervalues():
+            axes.update(value.axes)
+
+        return axes
 
     def loc(self, index):
         """

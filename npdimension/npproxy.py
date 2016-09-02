@@ -14,7 +14,21 @@ import numpy as np
 from block import Block
 from scaffold import Scaffold
 
+
 __all__ = ['NP_MEMBERS', 'NDARRAY_MEMBERS', 'load_proxies']
+
+
+# Data structure for proxied object members
+Parameters = namedtuple('Parameters', [
+    'determine_axes', # Generate the new axes for the returned Block
+    'transform_args', # Prepare the arguments for the numpy function
+    'override', # Inject this member even if it already exists
+    'passthrough', # Directly return the result of the numpy function
+    'transform_result' # Modify or wrap the result before returning it
+])
+
+# Provide Parameters defaults
+Parameters.__new__.__defaults__ = (None,) * len(Parameters._fields)
 
 
 def get_next_block(iterator):
@@ -23,6 +37,13 @@ def get_next_block(iterator):
             return value
 
     return None
+
+
+def manual_axes(*args, **kwargs):
+    if 'axes' not in kwargs:
+        raise Exception("Function requires 'axes' keyword argument.")
+
+    return kwargs['axes']
 
 
 def reverse_axes(*args, **kwargs):
@@ -206,25 +227,14 @@ def transform_indexing_args(*args, **kwargs):
     return args, kwargs
 
 
-# Data structure for proxied object members
-Parameters = namedtuple('Parameters', [
-    'transform_axes', # Generate the new axes for the returned Block
-    'transform_args', # Prepare the arguments for the numpy function
-    'override', # Inject this member even if it already exists
-    'passthrough' # Directly return the result of the numpy function
-])
-
-# Provide Parameters defaults
-Parameters.__new__.__defaults__ = (None,) * len(Parameters._fields)
-
 # Functions shared between the numpy module and the ndarray object
 NP_COMMON = {
-    'all': Parameters(transform_axes=remove_axis),
-    'any': Parameters(transform_axes=remove_axis),
-    'argmax': Parameters(transform_axes=only_axis),
-    'argmin': Parameters(transform_axes=only_axis),
-    'argpartition': Parameters(transform_axes=only_axis),
-    'argsort': Parameters(transform_axes=only_axis),
+    'all': Parameters(determine_axes=remove_axis),
+    'any': Parameters(determine_axes=remove_axis),
+    'argmax': Parameters(determine_axes=only_axis),
+    'argmin': Parameters(determine_axes=only_axis),
+    'argpartition': Parameters(determine_axes=only_axis),
+    'argsort': Parameters(determine_axes=only_axis),
     'choose': Parameters(),
     'clip': Parameters(),
     'compress': Parameters(),
@@ -233,29 +243,29 @@ NP_COMMON = {
     'cumsum': Parameters(),
     'diagonal': Parameters(),
     'imag': Parameters(),
-    'mean': Parameters(transform_axes=remove_axis),
+    'mean': Parameters(determine_axes=remove_axis),
     'nonzero': Parameters(),
     'partition': Parameters(),
-    'prod': Parameters(transform_axes=remove_axis),
-    'ptp': Parameters(transform_axes=remove_axis),
+    'prod': Parameters(determine_axes=remove_axis),
+    'ptp': Parameters(determine_axes=remove_axis),
     'put': Parameters(),
-    'ravel': Parameters(transform_axes=only_singular_axes),
+    'ravel': Parameters(determine_axes=only_singular_axes),
     'real': Parameters(),
-    # 'repeat': Parameters(),  # TODO: transform_axes
-    # 'reshape': Parameters(),  # TODO: transform_axes
-    # 'resize': Parameters(),  # TODO: transform_axes
+    # 'repeat': Parameters(),  # TODO: determine_axes
+    # 'reshape': Parameters(),  # TODO: determine_axes
+    # 'resize': Parameters(),  # TODO: determine_axes
     'round': Parameters(),
-    'searchsorted': Parameters(transform_axes=secondary_axes),
+    'searchsorted': Parameters(determine_axes=secondary_axes),
     # 'size': Parameters(),  # TODO
     'sort': Parameters(),
-    'squeeze': Parameters(),  # TODO: transform_axes
-    'std': Parameters(transform_axes=remove_axis),
-    'sum': Parameters(transform_axes=remove_axis),
-    'swapaxes': Parameters(transform_axes=swap_axes, transform_args=transform_swap_axes_args),
-    'take': Parameters(transform_axes=insert_axes),
+    'squeeze': Parameters(),  # TODO: determine_axes
+    'std': Parameters(determine_axes=remove_axis),
+    'sum': Parameters(determine_axes=remove_axis),
+    'swapaxes': Parameters(determine_axes=swap_axes, transform_args=transform_swap_axes_args),
+    'take': Parameters(determine_axes=insert_axes),
     'trace': Parameters(),
-    'transpose': Parameters(transform_axes=reverse_axes),
-    'var': Parameters(transform_axes=remove_axis),
+    'transpose': Parameters(determine_axes=reverse_axes),
+    'var': Parameters(determine_axes=remove_axis),
 }
 
 # All numpy module functions
@@ -270,6 +280,7 @@ NP_MEMBERS = {
     # 'append': Parameters(), # TODO: Implement
     # 'apply_along_axis': Parameters(), # TODO: Implement
     # 'apply_over_axes': Parameters(), # TODO: Implement
+    'arange': Parameters(determine_axes=manual_axes),
     # 'argwhere': Parameters(), # TODO: Implement
     # 'around': Parameters(), # TODO: Implement
     # 'array2string': Parameters(), # TODO: Implement
@@ -327,7 +338,7 @@ NP_MEMBERS = {
     # 'fill_diagonal': Parameters(), # TODO: Implement
     # 'find_common_type': Parameters(), # TODO: Implement
     # 'fix': Parameters(), # TODO: Implement
-    'flatnonzero': Parameters(transform_axes=only_singular_axes), # TODO: Implement
+    'flatnonzero': Parameters(determine_axes=only_singular_axes), # TODO: Implement
     # 'fliplr': Parameters(), # TODO: Implement
     # 'flipud': Parameters(), # TODO: Implement
     # 'fromfunction': Parameters(), # TODO: Implement
@@ -391,7 +402,7 @@ NP_MEMBERS = {
         'lstsq': Parameters(), # TODO: Implement
         'matrix_power': Parameters(), # TODO: Implement
         'matrix_rank': Parameters(), # TODO: Implement
-        'norm': Parameters(transform_axes=remove_axis),
+        'norm': Parameters(determine_axes=remove_axis),
         'pinv': Parameters(), # TODO: Implement
         'qr': Parameters(), # TODO: Implement
         'slogdet': Parameters(), # TODO: Implement
@@ -516,7 +527,7 @@ NP_MEMBERS.update(NP_COMMON)
 
 # All numpy ndarray member functions and attributes
 NDARRAY_MEMBERS = {
-    'T': Parameters(transform_axes=reverse_axes),
+    'T': Parameters(determine_axes=reverse_axes),
     '__abs__': Parameters(),
     '__add__': Parameters(),
     '__and__': Parameters(),
@@ -543,7 +554,7 @@ NDARRAY_MEMBERS = {
     # '__format__': Parameters(),
     '__ge__': Parameters(override=True),
     # '__getattribute__': Parameters(),
-    '__getitem__': Parameters(transform_axes=transform_indexing_axes,
+    '__getitem__': Parameters(determine_axes=transform_indexing_axes,
                               transform_args=transform_indexing_args),
     '__getslice__': Parameters(),
     '__gt__': Parameters(override=True),
@@ -624,13 +635,13 @@ NDARRAY_MEMBERS = {
     'fill': Parameters(),
     'flags': Parameters(),
     'flat': Parameters(),
-    'flatten': Parameters(transform_axes=only_singular_axes),
+    'flatten': Parameters(determine_axes=only_singular_axes),
     'getfield': Parameters(),
     'item': Parameters(),
     'itemset': Parameters(),
     'itemsize': Parameters(),
-    'max': Parameters(transform_axes=remove_axis),
-    'min': Parameters(transform_axes=remove_axis),
+    'max': Parameters(determine_axes=remove_axis),
+    'min': Parameters(determine_axes=remove_axis),
     'nbytes': Parameters(),
     'ndim': Parameters(),
     'newbyteorder': Parameters(),
@@ -662,7 +673,7 @@ def closure(func, params):
           or ndarrays, a dictionary with the same keys as the Scaffold and the result for each key
           is returned. If the results are all Blocks, a new Scaffold with the same keys and the
           result for each key is returned.
-        - If `what` specifies a `transform_axes` function, invoke it with the arguments to the
+        - If `what` specifies a `determine_axes` function, invoke it with the arguments to the
           function and save its return value as `transformed_axes`.
         - If `what` specifies a `transform_args` function, use it to transform the function
           arguments (both args and kwargs).
@@ -686,8 +697,8 @@ def closure(func, params):
         # method) or simply the first Block for an unbound method.
         first = get_next_block(args)
 
-        # transform_axes needs to use original arguments, so we invoke it first
-        transformed_axes = transform_axes(params, first, *args, **kwargs)
+        # determine_axes needs to use original arguments, so we invoke it first
+        transformed_axes = determine_axes(params, first, *args, **kwargs)
 
         # Prepare arguments for numpy function
         args, kwargs = transform_args(params, first, *args, **kwargs)
@@ -765,9 +776,9 @@ def peel_scaffolds(func, *args, **kwargs):
     return results
 
 
-def transform_axes(params, first, *args, **kwargs):
-    if params.transform_axes is not None:
-        return params.transform_axes(*args, **kwargs)
+def determine_axes(params, first, *args, **kwargs):
+    if params.determine_axes is not None:
+        return params.determine_axes(*args, **kwargs)
     else:
         return first.axes
 

@@ -46,6 +46,13 @@ def manual_axes(*args, **kwargs):
     return kwargs['axes']
 
 
+def remove_axes_kwarg(*args, **kwargs):
+    if 'axes' in kwargs:
+        del kwargs['axes']
+
+    return args, kwargs
+
+
 def reverse_axes(*args, **kwargs):
     return reversed(get_next_block(args).axes)
 
@@ -280,7 +287,7 @@ NP_MEMBERS = {
     # 'append': Parameters(), # TODO: Implement
     # 'apply_along_axis': Parameters(), # TODO: Implement
     # 'apply_over_axes': Parameters(), # TODO: Implement
-    'arange': Parameters(determine_axes=manual_axes),
+    'arange': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg),
     # 'argwhere': Parameters(), # TODO: Implement
     # 'around': Parameters(), # TODO: Implement
     # 'array2string': Parameters(), # TODO: Implement

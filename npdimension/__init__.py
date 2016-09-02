@@ -3,24 +3,19 @@ Label dimensions of numpy ndarrays and perform bulk operations on aligned ndarra
 container.
 """
 
-# Imports
-import sys
+# Scientific imports
 import numpy
 
+# Local imports
 import npd
-import block
-import scaffold
 import npproxy
 
-# Load numpy members from npproxy
+# Inject all members
 npproxy.load_proxies(numpy, npproxy.NP_MEMBERS, npd)
-npproxy.load_proxies(numpy.ndarray, npproxy.NDARRAY_MEMBERS, block.Block)
-npproxy.load_proxies(numpy.ndarray, npproxy.NDARRAY_MEMBERS, scaffold.Scaffold)
+npproxy.load_proxies(numpy.ndarray, npproxy.NDARRAY_MEMBERS, npd.Block)
+npproxy.load_proxies(numpy.ndarray, npproxy.NDARRAY_MEMBERS, npd.Scaffold)
 
-# Load all top-level members
+# Import results and other members
 from npd import *
-from block import Block
-from scaffold import Scaffold
-from npdindexer import NPDIndexer
 
 __all__ = ['Block', 'NPDIndexer', 'Scaffold'] + list(npproxy.NP_MEMBERS.keys())

@@ -45,6 +45,7 @@ class Scaffold(dict):
         normally = super(Scaffold, self).__repr__()
         return "%s(%s)" % (Scaffold.__name__, normally)
 
+    @property
     def axes(self):
         """
         Return an unordered set representing the axes present in this Scaffold.

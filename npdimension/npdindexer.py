@@ -8,6 +8,7 @@ import six
 
 import npd
 
+
 class NPDIndexer(object):
     """
     The indexing object for `Block`s and `Scaffold`s.
@@ -27,7 +28,7 @@ class NPDIndexer(object):
     @property
     def _sorter(self):
         """
-        Lazily load the sorter when requested.
+        Lazily load and cache the sorter when requested.
         """
         if self.__sorter is None:
             self.__sorter = npd.argsort(self._index)

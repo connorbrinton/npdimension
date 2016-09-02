@@ -52,8 +52,12 @@ def insert_axes(*args, **kwargs):
         # Find the index of the axis argument in the first axes
         index = block.axes.index(axis)
 
+        # The axis along which the original block is being sliced takes precedence over the slicer's
+        # axes, so we increase the index by one to keep the original slicing axis.
+        index = index + 1
+
         # Substitute the second Block's axes where the specified axis exists
-        return block.axes[:index] + indexer.axes + block.axes[(index + 1):]
+        return block.axes[:index] + indexer.axes[1:] + block.axes[(index + 1):]
 
     # If it's a scalar, just return the normal axes or nothing, depending on the axis kwarg
     if np.isscalar(indexer):
@@ -64,10 +68,11 @@ def insert_axes(*args, **kwargs):
         # Otherwise, remove the requested axis
         return remove_axis(block, axis=axis)
 
-    # If it's not a Block or a scalar, make sure it's 1D return the normal axes
+    # If it's not a Block or a scalar, make sure it's 1D
     if np.ndim(indexer) != 1:
         raise Exception("A Block, 1D array-like object, or scalar is required for this function.")
 
+    # Return the normal axes
     return block.axes
 
 

@@ -45,6 +45,11 @@ class NPDIndexer(object):
             indices = npd.flatnonzero(self._index == selection)
         else:
             # Must be either a scalar or an array/iterator
+            if len(self._sorter) == 0:
+                # We actually have no data
+                indices = []
+
+            # Find indexed elements
             indices = npd.searchsorted(self._index, selection, sorter=self._sorter)
 
         return npd.take(self._data, indices, axis=self._axis)

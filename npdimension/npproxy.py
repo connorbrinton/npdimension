@@ -106,7 +106,7 @@ def insert_axes(*args, **kwargs):
 
 def remove_axis(*args, **kwargs):
     # If an axis wasn't specified, don't worry about it
-    if kwargs['axis'] is None:
+    if 'axis' not in kwargs or kwargs['axis'] is None:
         return None
 
     # Otherwise, remove the specified axis

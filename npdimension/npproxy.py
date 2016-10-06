@@ -250,6 +250,7 @@ NP_COMMON = {
     'cumsum': Parameters(),
     'diagonal': Parameters(),
     'imag': Parameters(),
+    'max': Parameters(determine_axes=remove_axis),
     'mean': Parameters(determine_axes=remove_axis),
     'nonzero': Parameters(),
     'partition': Parameters(),
@@ -350,7 +351,7 @@ NP_MEMBERS = {
     # 'flipud': Parameters(), # TODO: Implement
     # 'fromfunction': Parameters(), # TODO: Implement
     # 'fromregex': Parameters(), # TODO: Implement
-    # 'full': Parameters(), # TODO: Implement
+    'full': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg), # TODO: Implement
     # 'full_like': Parameters(), # TODO: Implement
     # 'fv': Parameters(), # TODO: Implement
     # 'genfromtxt': Parameters(), # TODO: Implement
@@ -647,7 +648,6 @@ NDARRAY_MEMBERS = {
     'item': Parameters(),
     'itemset': Parameters(),
     'itemsize': Parameters(),
-    'max': Parameters(determine_axes=remove_axis),
     'min': Parameters(determine_axes=remove_axis),
     'nbytes': Parameters(),
     'ndim': Parameters(),

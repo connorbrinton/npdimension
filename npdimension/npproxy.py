@@ -339,6 +339,7 @@ NP_MEMBERS = {
     # 'dstack': Parameters(), # TODO: Implement
     # 'ediff1d': Parameters(), # TODO: Implement
     # 'emath': {} # TODO: Add emath functions
+    'empty': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg),
     # 'expand_dims': Parameters(), # TODO: Implement
     # 'extract': Parameters(), # TODO: Implement
     # 'eye': Parameters(), # TODO: Implement
@@ -351,7 +352,7 @@ NP_MEMBERS = {
     # 'flipud': Parameters(), # TODO: Implement
     # 'fromfunction': Parameters(), # TODO: Implement
     # 'fromregex': Parameters(), # TODO: Implement
-    'full': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg), # TODO: Implement
+    'full': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg),
     # 'full_like': Parameters(), # TODO: Implement
     # 'fv': Parameters(), # TODO: Implement
     # 'genfromtxt': Parameters(), # TODO: Implement

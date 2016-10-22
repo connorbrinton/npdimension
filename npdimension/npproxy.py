@@ -169,6 +169,26 @@ def transform_swap_axes_args(*args, **kwargs):
     return args, kwargs
 
 
+def transform_apply_along_axis_args(*args, **kwargs):
+    """
+    Transform apply_along_axis(func, block, *args, axis='?', **kwargs) into
+    apply_along_axis(func, axis_index, block, *args, **kwargs)
+    """
+    # Look up the function, block, and axis
+    func = args[0]
+    block = args[1]
+    axis = kwargs.pop('axis')
+    remaining = args[2:]
+
+    # Look up the axis index
+    index = block.axes.index(axis)
+
+    # Create new arguments
+    args = [func, index, block] + remaining
+
+    return args, kwargs
+
+
 def transform_indexing_axes(*args, **kwargs):
     """
     Remove axes indexed by scalar values.
@@ -286,7 +306,8 @@ NP_MEMBERS = {
     # 'amin': Parameters(), # TODO: Implement
     # 'angle': Parameters(), # TODO: Implement
     # 'append': Parameters(), # TODO: Implement
-    # 'apply_along_axis': Parameters(), # TODO: Implement
+    'apply_along_axis': Parameters(determine_axes=only_axis,
+                                   transform_args=transform_apply_along_axis_args),
     # 'apply_over_axes': Parameters(), # TODO: Implement
     'arange': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg),
     # 'argwhere': Parameters(), # TODO: Implement

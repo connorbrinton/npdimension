@@ -342,7 +342,7 @@ NP_MEMBERS = {
     # 'amin': Parameters(), # TODO: Implement
     # 'angle': Parameters(), # TODO: Implement
     # 'append': Parameters(), # TODO: Implement
-    'apply_along_axis': Parameters(determine_axes=only_axis,
+    'apply_along_axis': Parameters(determine_axes=remove_axis, # TODO: Only works for 1d returns
                                    transform_args=transform_apply_along_axis_args),
     # 'apply_over_axes': Parameters(), # TODO: Implement
     'arange': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg),

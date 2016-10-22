@@ -189,6 +189,42 @@ def transform_apply_along_axis_args(*args, **kwargs):
     return args, kwargs
 
 
+def expand_axes(*args, **kwargs):
+    """
+    Determine the new axes for an invocation of npd.expand_axes(block, after, name).
+    """
+    # Look up arguments
+    block = args[0]
+    after = args[1]
+    name = args[2]
+
+    # Find index of after in axes
+    axes = block.axes
+    index = axes.index(after)
+
+    # Return axes with name inserted after index
+    return axes[:(index + 1)] + [name] + axes[(index + 1):]
+
+
+def transform_expand_axes(*args, **kwargs):
+    """
+    Transform an invocation of npd.expand_axes(block, after, name) into
+    np.expand_axes(block, after_index).
+    """
+    # Look up arguments
+    block = args[0]
+    after = args[1]
+
+    # Find index of after in axes
+    axes = block.axes
+    index = axes.index(after)
+
+    # Generate transformed arguments
+    args = [block, index]
+
+    return args, kwargs
+
+
 def transform_indexing_axes(*args, **kwargs):
     """
     Remove axes indexed by scalar values.
@@ -361,7 +397,7 @@ NP_MEMBERS = {
     # 'ediff1d': Parameters(), # TODO: Implement
     # 'emath': {} # TODO: Add emath functions
     'empty': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg),
-    # 'expand_dims': Parameters(), # TODO: Implement
+    'expand_dims': Parameters(determine_axes=expand_axes, transform_args=transform_expand_axes),
     # 'extract': Parameters(), # TODO: Implement
     # 'eye': Parameters(), # TODO: Implement
     # 'fft': {}, # TODO: Add fft functions
@@ -444,6 +480,7 @@ NP_MEMBERS = {
     # 'linspace': Parameters(), # TODO: Implement
     # 'load': Parameters(), # TODO: Implement
     # 'loadtxt': Parameters(), # TODO: Implement
+    'logical_not': Parameters(),
     # 'logspace': Parameters(), # TODO: Implement
     # 'lookfor': Parameters(), # TODO: Implement
     # 'ma': {}, # TODO: Add ma functions

@@ -184,14 +184,14 @@ def transform_apply_along_axis_args(*args, **kwargs):
     index = block.axes.index(axis)
 
     # Create new arguments
-    args = [func, index, block] + remaining
+    args = [func, index, block] + list(remaining)
 
     return args, kwargs
 
 
-def expand_axes(*args, **kwargs):
+def expand_dims(*args, **kwargs):
     """
-    Determine the new axes for an invocation of npd.expand_axes(block, after, name).
+    Determine the new axes for an invocation of npd.expand_dims(block, after, name).
     """
     # Look up arguments
     block = args[0]
@@ -206,10 +206,10 @@ def expand_axes(*args, **kwargs):
     return axes[:(index + 1)] + [name] + axes[(index + 1):]
 
 
-def transform_expand_axes(*args, **kwargs):
+def transform_expand_dims(*args, **kwargs):
     """
-    Transform an invocation of npd.expand_axes(block, after, name) into
-    np.expand_axes(block, after_index).
+    Transform an invocation of npd.expand_dims(block, after, name) into
+    np.expand_dims(block, after_index).
     """
     # Look up arguments
     block = args[0]
@@ -397,7 +397,7 @@ NP_MEMBERS = {
     # 'ediff1d': Parameters(), # TODO: Implement
     # 'emath': {} # TODO: Add emath functions
     'empty': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg),
-    'expand_dims': Parameters(determine_axes=expand_axes, transform_args=transform_expand_axes),
+    'expand_dims': Parameters(determine_axes=expand_dims, transform_args=transform_expand_dims),
     # 'extract': Parameters(), # TODO: Implement
     # 'eye': Parameters(), # TODO: Implement
     # 'fft': {}, # TODO: Add fft functions

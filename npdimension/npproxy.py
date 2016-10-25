@@ -480,7 +480,9 @@ NP_MEMBERS = {
     # 'linspace': Parameters(), # TODO: Implement
     # 'load': Parameters(), # TODO: Implement
     # 'loadtxt': Parameters(), # TODO: Implement
+    'logical_and': Parameters(),
     'logical_not': Parameters(),
+    'logical_or': Parameters(),
     # 'logspace': Parameters(), # TODO: Implement
     # 'lookfor': Parameters(), # TODO: Implement
     # 'ma': {}, # TODO: Add ma functions

@@ -255,6 +255,15 @@ def transform_indexing_axes(*args, **kwargs):
     if isinstance(indexer, tuple):
         return [axis for axis, index in zip(block.axes, indexer) if not np.isscalar(index)]
     elif isinstance(indexer, dict):
+        axes = []
+        for axis in block.axes:
+            # Look up the slice value
+            value = indexer.get(axis, None) # pylint: disable=E1101
+
+            # If not a scalar (or if it's None, meaning not specified), the axis will be present
+            if not np.isscalar(value):
+                axes.append(axis)
+
         return [axis for axis in block.axes if axis not in indexer or not np.isscalar(indexer[axis])]
     else:
         # We don't know this type of selection :(
@@ -283,10 +292,7 @@ def transform_indexing_args(*args, **kwargs):
     # Build a new slice object
     slicer = []
     for axis in block.axes:
-        try:
-            slicer.append(indexer[axis])
-        except KeyError:
-            slicer.append(slice(None))
+        slicer.append(indexer.get(axis, slice(None)))
 
     # Convert to a tuple
     slicer = tuple(slicer)

@@ -264,7 +264,7 @@ def transform_indexing_axes(*args, **kwargs):
             if not np.isscalar(value):
                 axes.append(axis)
 
-        return [axis for axis in block.axes if axis not in indexer or not np.isscalar(indexer[axis])]
+        return axes
     else:
         # We don't know this type of selection :(
         raise Exception("Unknown selection type %s provided. A scalar, tuple, or dict is expected."

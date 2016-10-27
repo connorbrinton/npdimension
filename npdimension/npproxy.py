@@ -281,7 +281,15 @@ def transform_indexing_args(*args, **kwargs):
     block = get_next_block(args)
 
     # Build a new slice object
-    slicer = tuple(indexer[axis] if axis in indexer else slice(None) for axis in block.axes)
+    slicer = []
+    for axis in block.axes:
+        try:
+            slicer.append(indexer[axis])
+        except KeyError:
+            slicer.append(slice(None))
+
+    # Convert to a tuple
+    slicer = tuple(slicer)
 
     # Replace the old indexer
     args[1] = slicer

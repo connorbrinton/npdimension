@@ -85,7 +85,7 @@ def insert_axes(*args, **kwargs):
         index = index + 1
 
         # Substitute the second Block's axes where the specified axis exists
-        return block.axes[:index] + indexer.axes[1:] + block.axes[(index + 1):]
+        return block.axes[:index] + indexer.axes[1:] + block.axes[index:]
 
     # If it's a scalar, just return the normal axes or nothing, depending on the axis kwarg
     if np.isscalar(indexer):

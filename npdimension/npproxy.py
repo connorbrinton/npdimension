@@ -257,11 +257,15 @@ def transform_indexing_axes(*args, **kwargs):
     elif isinstance(indexer, dict):
         axes = []
         for axis in block.axes:
-            # Look up the slice value
-            value = indexer.get(axis, None) # pylint: disable=E1101
+            try:
+                # Look up the slice value
+                value = indexer[axis]
 
-            # If not a scalar (or if it's None, meaning not specified), the axis will be present
-            if not np.isscalar(value):
+                # If not a scalar, the axis will be present
+                if not np.isscalar(value):
+                    axes.append(axis)
+            except KeyError:
+                # Include the unsliced axis
                 axes.append(axis)
 
         return axes
@@ -292,7 +296,10 @@ def transform_indexing_args(*args, **kwargs):
     # Build a new slice object
     slicer = []
     for axis in block.axes:
-        slicer.append(indexer.get(axis, slice(None)))
+        try:
+            slicer.append(indexer[axis])
+        except KeyError:
+            slicer.append(slice(None))
 
     # Convert to a tuple
     slicer = tuple(slicer)

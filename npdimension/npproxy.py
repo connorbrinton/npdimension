@@ -891,7 +891,9 @@ def transform_args(params, first, *args, **kwargs):
         if axis is None:
             del kwargs['axis']
         if axis is not None:
-            kwargs['axis'] = first.axes.index(axis)
+            if axis in first.axes:
+                kwargs['axis'] = first.axes.index(axis)
+                # Otherwise just leave the axis untransformed
 
     return args, kwargs
 

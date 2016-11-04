@@ -591,7 +591,7 @@ NP_MEMBERS = {
     # 'sort_complex': Parameters(), # TODO: Implement
     # 'source': Parameters(), # TODO: Implement
     # 'split': Parameters(), # TODO: Implement
-    # 'stack': Parameters(), # TODO: Implement
+    'stack': Parameters(determine_axes=manual_axes, transform_args=remove_axes_kwarg), # TODO: Horrible, fix axis argument
     # 'tensordot': Parameters(), # TODO: Implement
     # 'tile': Parameters(), # TODO: Implement
     # 'trapz': Parameters(), # TODO: Implement

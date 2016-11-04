@@ -604,7 +604,7 @@ NP_MEMBERS = {
     # 'triu_indices': Parameters(), # TODO: Implement
     # 'triu_indices_from': Parameters(), # TODO: Implement
     # 'typename': Parameters(), # TODO: Implement
-    # 'union1d': Parameters(), # TODO: Implement
+    'union1d': Parameters(), # TODO: Implement
     'unique': Parameters(determine_axes=only_singular_axes), # TODO: Implement
     # 'unwrap': Parameters(), # TODO: Implement
     # 'vander': Parameters(), # TODO: Implement

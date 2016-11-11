@@ -50,6 +50,7 @@ class NPDIndexer(object):
                 indices = []
             else:
                 # Find indexed elements
-                indices = npd.searchsorted(self._index, selection, sorter=self._sorter)
+                sorted_indices = npd.searchsorted(self._index, selection, sorter=self._sorter)
+                indices = self._sorter[sorted_indices]
 
         return npd.take(self._data, indices, axis=self._axis)

@@ -243,8 +243,9 @@ def transform_indexing_axes(*args, **kwargs):
     # Tuples are filled to the full dimensionality of the Block
     if isinstance(indexer, tuple):
         # Ellipses in tuples are replaced to fill the tuple with full slices
-        if Ellipsis in indexer:
-            index = indexer.index(Ellipsis)
+        ellipses = [dicer is Ellipsis for dicer in indexer]
+        if any(ellipses):
+            index = ellipses.index(True)
             left, right = indexer[:(index - 1)], indexer[index:]
         else:
             left, right = indexer, []
